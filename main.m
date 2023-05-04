@@ -65,5 +65,3 @@ clear nanIndices
 clear i
 
 %%
-
-% Test
