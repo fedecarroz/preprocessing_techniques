@@ -65,3 +65,44 @@ clear nanIndices
 clear i
 
 %%
+
+% Check outliers
+
+outlier_indices = []
+
+% Finds rows with outliers
+
+for i = 1:(size(data, 2) - 1)
+    col = data.(i);
+
+    % Check if column has numeric values
+
+    if isnumeric(col)
+
+        Q1 = prctile(col, 25);
+        Q3 = prctile(col, 75);
+
+        IQR = Q3 - Q1;
+        outlier_step = 1.5*IQR;
+
+        outlier_list_col = find( col > Q3 + outlier_step | col < Q1 - outlier_step );
+        outlier_indices = cat(1, outlier_indices, outlier_list_col);
+
+    end
+end
+
+% Remove outliers with at least 2 outliers
+
+[outlier_indices_count, outlier_indices] = groupcounts(outlier_indices);
+
+multiple_outliers_index_position = find(outlier_indices_count > 2)
+multiple_outliers = outlier_indices(multiple_outliers_index_position)
+
+data(multiple_outliers,: ) = [];
+
+% Cleaning
+clear multiple_outliers_index_position
+clear multiple_outliers
+clear i col
+clear Q1 Q2 IQR
+clear outlier_step outlier_list_col outlier_indices
