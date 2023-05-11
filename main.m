@@ -10,19 +10,19 @@ data = dataset;
 data(data.PoolArea > 0, :) = [];
 %%
 % Garage ...
-hasGarage = zeros(height(data),1);
-hasGarage(data.GarageArea > 0) = 1;
+has_garage = zeros(height(data), 1);
+has_garage(data.GarageArea > 0) = 1;
 
 data = addvars( ...
     data, ...
-    hasGarage, ...
+    has_garage, ...
     'Before', ...
     'GarageArea', ...
     'NewVariableNames', ...
     'hasGarage' ...
 );
 
-clear hasGarage
+clear has_garage
 %%
 % After data exploration low informative-content variables are removed
 data = removevars( ...
@@ -41,11 +41,11 @@ data = removevars( ...
 );
 %%
 % Missing values analysis
-nanCount = sum(ismissing(data))
-nanIndices = find(nanCount > 0)
-%%
+nan_count = sum(ismissing(data))
+nan_indices = find(nan_count > 0)
+
 % Missing values management
-for i = nanIndices
+for i = nan_indices
     data.(i) = fillmissing( ...
         data.(i), ...
         'constant', ...
@@ -53,28 +53,28 @@ for i = nanIndices
     );
 end
 
-clear nanCount nanIndices i
+clear nan_count nan_indices i
 %%
-numFeatures = (size(data, 2)) -1
+num_features = (size(data, 2)) -1
 %%
 %%
-columnsIndices = [19, 20, 22, 23, 27, 38, 43];
+columns_indices = [19, 20, 22, 23, 27, 38, 43];
 keys = {'NA', 'Po', 'Fa', 'TA', 'Gd', 'Ex'};
 values = [0, 1, 2, 3, 4, 5];
 
-for i = columnsIndices
-    oldColumn = data.(i);
-    newColumn = zeros(length(data.(i)), 1);
+for i = columns_indices
+    old_column = data.(i);
+    new_column = zeros(length(data.(i)), 1);
 
     for j = 1 : length(keys)
-        newColumn(strcmp(oldColumn, keys(j))) = values(j);
+        new_column(strcmp(old_column, keys(j))) = values(j);
     end
-    data.(i) = newColumn;
+    data.(i) = new_column;
 end
 
-clear columnsIndices keys values oldColumn newColumn i j
+clear columns_indices keys values old_column new_column i j
 %%
-for i = 1 : numFeatures
+for i = 1 : num_features
     if ~isnumeric(data.(i))
         data.(i) = grp2idx(data.(i));
     end
@@ -83,35 +83,77 @@ end
 clear i
 %% Outliers removal
 
-outlierIndices = [];
+outlier_indices = [];
 
 % Finds rows with outliers
 for i = 1:(size(data, 2) - 1)
-    col = data.(i);
+    column = data.(i);
 
     % Check if column has numeric values
-    if isnumeric(col)
-        Q1 = prctile(col, 25);
-        Q3 = prctile(col, 75);
+    if isnumeric(column)
+        Q1 = prctile(column, 25);
+        Q3 = prctile(column, 75);
 
         IQR = Q3 - Q1;
-        outlierStep = 1.5*IQR;
+        outlier_step = 1.5*IQR;
 
-        outlierListCol = find(col > Q3 + outlierStep | col < Q1 - outlierStep );
-        outlierIndices = cat(1, outlierIndices, outlierListCol);
+        outlier_list_col = find( ...
+            column > Q3 + outlier_step | column < Q1 - outlier_step ...
+        );
+        outlier_indices = cat(1, outlier_indices, outlier_list_col);
     end
 end
 
 % Remove outliers with at least 2 outliers
-[outlierIndicesCount, outlierIndices] = groupcounts(outlierIndices);
+[outlier_indices_count, outlier_indices] = groupcounts(outlier_indices);
 
-multipleOutliers = outlierIndices(outlierIndicesCount > 2);
+multiple_outliers = outlier_indices(outlier_indices_count > 2);
 
-data(multipleOutliers,: ) = [];
+data(multiple_outliers,: ) = [];
 
 % Cleaning
-clear i col Q1 Q2 Q3 IQR
-clear outlierStep outlierListCol outlierIndices outlierIndicesCount
-clear multipleOutliers
-%%
-% ...
+clear i column Q1 Q2 Q3 IQR
+clear outlier_step outlier_list_col outlier_indices outlier_indices_count
+clear multiple_outliers
+%% Data splitting
+
+cv = cvpartition(height(data),'HoldOut',0.2);
+training_data = data(training(cv),:);
+test_data = data(test(cv),:);
+
+X_train = table2array(removevars(training_data, {'SalePrice'}));
+y_train = table2array(training_data(:, {'SalePrice'}));
+
+X_test = table2array(removevars(test_data, {'SalePrice'}));
+y_test = table2array(test_data(:, {'SalePrice'}));
+
+clear cv training_data test_data
+%% PCA
+
+[~, ~, ~, ~, explained] = pca(X_train);
+cum_sum = cumsum(explained)
+
+threshold = 99.9
+
+% Hyperparameter tuning (optimal number of components)
+for i = 1: length(cum_sum)
+    if cum_sum(i) >= threshold
+        opt_components = i
+        exp_var = cum_sum(i)
+        break
+    end
+end
+
+% Z-score normalization
+[X_train, mu, sigma] = zscore(X_train);
+X_test = (X_test - mu) ./ sigma;
+
+% PCA using optimal number of components
+[coeff, score, latent, tsquared, explained, mu] = pca( ...
+    X_train, ...
+    'NumComponents', ...
+    opt_components ...
+);
+
+X_train = X_train * coeff;
+X_test = X_test * coeff;
