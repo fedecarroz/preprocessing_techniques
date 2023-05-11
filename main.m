@@ -1,20 +1,24 @@
+%% Preprocessing techniques project
+%% Preliminary operations
+
 clear
 clc
-%%
-%% 
-% Import data
+%% Import data
+
 dataset = readtable('train.csv');
+
 % Working variable
 data = dataset;
-%%
-% Removal of 'pool-related' non-informative rows
-data(data.PoolArea > 0, :) = [];
-%%
-% Normalization setup step
+%% Normalization setup step
+
 categorical_variables_indices = [];
-normalization_type = 'minmax';
-%%
-% Garage ...
+normalization_type = 'zscore';
+%% Preprocessing phase
+
+% Removal of 'pool-related' non-informative records
+data(data.PoolArea > 0, :) = [];
+
+% Addition of a 'garage-related' feature
 has_garage = zeros(height(data), 1);
 has_garage(data.GarageArea > 0) = 1;
 
@@ -27,8 +31,6 @@ data = addvars( ...
     'HasGarage' ...
 );
 
-clear has_garage
-%%
 % After data exploration low informative-content variables are removed
 data = removevars( ...
     data, ...
@@ -48,7 +50,7 @@ data = removevars( ...
 has_garage_index = find(strcmp(data.Properties.VariableNames, 'HasGarage'));
 categorical_variables_indices = [categorical_variables_indices, has_garage_index];
 
-clear has_garage_index
+clear has_garage has_garage_index
 %%
 % Missing values analysis
 nan_count = sum(ismissing(data))
@@ -64,10 +66,9 @@ for i = nan_indices
 end
 
 clear nan_count nan_indices i
-%%
-num_features = (size(data, 2)) -1
-%%
-%%
+%% Categorical features encoding
+
+% 'Quality-related' features encoding
 columns_indices = [19, 20, 22, 23, 27, 38, 43];
 categorical_variables_indices = [categorical_variables_indices, columns_indices];
 
@@ -85,7 +86,10 @@ for i = columns_indices
 end
 
 clear columns_indices keys values old_column new_column i j
-%%
+
+% Other categorical features encoding
+num_features = (size(data, 2)) -1
+
 for i = 1 : num_features
     if ~isnumeric(data.(i))
         if ~ismember(i, categorical_variables_indices)
@@ -95,7 +99,7 @@ for i = 1 : num_features
     end
 end
 
-clear i
+clear i num_features
 %% Outliers removal
 
 outlier_indices = [];
@@ -126,10 +130,9 @@ multiple_outliers = outlier_indices(outlier_indices_count > 2);
 
 data(multiple_outliers,: ) = [];
 
-% Cleaning
 clear i column Q1 Q2 Q3 IQR
-clear outlier_step outlier_list_col outlier_indices outlier_indices_count
-clear multiple_outliers
+clear outlier_step outlier_list_col outlier_indices
+clear outlier_indices_count multiple_outliers
 %% Data splitting
 
 cv = cvpartition(height(data),'HoldOut',0.2);
@@ -142,8 +145,8 @@ y_train = table2array(training_data(:, {'SalePrice'}));
 X_test = table2array(removevars(test_data, {'SalePrice'}));
 y_test = table2array(test_data(:, {'SalePrice'}));
 
-clear cv training_data test_data
-%% PCA
+clear data cv training_data test_data
+%% PCA and normalization
 
 [~, ~, ~, ~, explained] = pca(X_train);
 cum_sum = cumsum(explained)
@@ -159,7 +162,7 @@ for i = 1: length(cum_sum)
     end
 end
 
-% Data normalization
+% Normalization of numerical (continuous) data only
 X_train_numerical = X_train;
 X_train_numerical(:, categorical_variables_indices) = [];
 X_train_categorical = X_train(:, categorical_variables_indices);
@@ -170,10 +173,10 @@ X_test_categorical = X_test(:, categorical_variables_indices);
 
 if strcmp(normalization_type, 'zscore')
     [X_train_numerical, mu, sigma] = zscore(X_train_numerical);
-    X_test_numerical = standardizeCols(X_test_numerical, mu, sigma);
+    X_test_numerical = (X_test_numerical - mu) ./ sigma;
 elseif strcmp(normalization_type, 'minmax')
-    [X_train_numerical, train_settings] = normalize(X_train_numerical');
-    X_test_numerical = mapminmax.apply(X_test_numerical', train_settings);
+    [X_train_numerical, C, S] = normalize(X_train_numerical, 'range');
+    X_test_numerical = (X_test_numerical - C) ./ S;
 end
 
 X_train = [X_train_numerical, X_train_categorical];
