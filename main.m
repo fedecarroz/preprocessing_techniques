@@ -1,6 +1,7 @@
 clear
 clc
 %%
+%% 
 % Import data
 dataset = readtable('train.csv');
 % Working variable
@@ -8,6 +9,10 @@ data = dataset;
 %%
 % Removal of 'pool-related' non-informative rows
 data(data.PoolArea > 0, :) = [];
+%%
+% Normalization setup step
+categorical_variables_indices = [];
+normalization_type = 'minmax';
 %%
 % Garage ...
 has_garage = zeros(height(data), 1);
@@ -19,7 +24,7 @@ data = addvars( ...
     'Before', ...
     'GarageArea', ...
     'NewVariableNames', ...
-    'hasGarage' ...
+    'HasGarage' ...
 );
 
 clear has_garage
@@ -39,6 +44,11 @@ data = removevars( ...
         'YrSold', 'SaleType', ...
     } ...
 );
+
+has_garage_index = find(strcmp(data.Properties.VariableNames, 'HasGarage'));
+categorical_variables_indices = [categorical_variables_indices, has_garage_index];
+
+clear has_garage_index
 %%
 % Missing values analysis
 nan_count = sum(ismissing(data))
@@ -59,6 +69,8 @@ num_features = (size(data, 2)) -1
 %%
 %%
 columns_indices = [19, 20, 22, 23, 27, 38, 43];
+categorical_variables_indices = [categorical_variables_indices, columns_indices];
+
 keys = {'NA', 'Po', 'Fa', 'TA', 'Gd', 'Ex'};
 values = [0, 1, 2, 3, 4, 5];
 
@@ -76,6 +88,9 @@ clear columns_indices keys values old_column new_column i j
 %%
 for i = 1 : num_features
     if ~isnumeric(data.(i))
+        if ~ismember(i, categorical_variables_indices)
+            categorical_variables_indices = [categorical_variables_indices, i];
+        end
         data.(i) = grp2idx(data.(i));
     end
 end
@@ -138,22 +153,45 @@ threshold = 99.9
 % Hyperparameter tuning (optimal number of components)
 for i = 1: length(cum_sum)
     if cum_sum(i) >= threshold
-        opt_components = i
+        optimal_num_components = i
         exp_var = cum_sum(i)
         break
     end
 end
 
-% Z-score normalization
-[X_train, mu, sigma] = zscore(X_train);
-X_test = (X_test - mu) ./ sigma;
+% Data normalization
+X_train_numerical = X_train;
+X_train_numerical(:, categorical_variables_indices) = [];
+X_train_categorical = X_train(:, categorical_variables_indices);
+
+X_test_numerical = X_test;
+X_test_numerical(:, categorical_variables_indices) = [];
+X_test_categorical = X_test(:, categorical_variables_indices);
+
+if strcmp(normalization_type, 'zscore')
+    [X_train_numerical, mu, sigma] = zscore(X_train_numerical);
+    X_test_numerical = standardizeCols(X_test_numerical, mu, sigma);
+elseif strcmp(normalization_type, 'minmax')
+    [X_train_numerical, train_settings] = normalize(X_train_numerical');
+    X_test_numerical = mapminmax.apply(X_test_numerical', train_settings);
+end
+
+X_train = [X_train_numerical, X_train_categorical];
+X_test = [X_test_numerical, X_test_categorical];
 
 % PCA using optimal number of components
-[coeff, score, latent, tsquared, explained, mu] = pca( ...
+coeff = pca( ...
     X_train, ...
     'NumComponents', ...
-    opt_components ...
+    optimal_num_components ...
 );
 
+% ...
 X_train = X_train * coeff;
 X_test = X_test * coeff;
+
+clear explained cum_sum threshold optimal_num_components exp_var
+clear X_train_numerical X_train_categorical
+clear X_test_numerical X_test_categorical
+clear categorical_variables_indices
+clear coeff i mu sigma
