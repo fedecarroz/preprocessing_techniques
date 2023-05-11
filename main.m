@@ -79,9 +79,11 @@ for i = 1 : numFeatures
         data.(i) = grp2idx(data.(i));
     end
 end
+
+clear i
 %% Outliers removal
 
-outlierIndices = []
+outlierIndices = [];
 
 % Finds rows with outliers
 for i = 1:(size(data, 2) - 1)
