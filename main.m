@@ -15,6 +15,42 @@ categorical_variables_indices = [];
 normalization_type = 'zscore';
 %% Preprocessing phase
 
+% Dopo un attento studio del dataset sono state eliminate delle
+% colonne. Di seguito vengono spiegate le motivazioni
+
+disp(dataset.Fence)
+
+% La colonnsa Fence contiene dati non informativi, ovvero non c'è una 
+% variazione significativa di questi ultimi 
+% quindi non contribuiscono alla comprensione del fenomeno
+
+disp(dataset.Utilities)
+
+% La colonna Utilities viene eliminata in quanto tutte le sue occorrenze
+% sono uguali
+
+disp(dataset.WoodDeckSF)
+
+% La colonna WoodDeckSF contiene un'alta percentuale di valori
+% nulli o zero, di conseguenza non è utile alla nostra analisi. 
+% In più un elevato numero di dati nulli implica una ridotta varianza
+% e una ridotta informazione.
+
+disp(dataset.FireplaceQu)
+
+% La colonna  FireplaceQu presenta diversi NaN values. Quindi da un'attenta analisi è stata eliminata in seguito in quanto
+% una mancata gestione comporta errori o comportamenti imprevisti, 
+% per esempio la produzione di risultati non validi
+
+disp(dataset.TotRmsAbvGrd)
+
+% La colonna TotRmsAbvGrd è stata eliminata in quanto presenta dati
+% incosistenti, ovvero dati contradditori o nn confrmi che influiscono
+% negativamente sul processo di addestramento e sui risultati
+
+disp(dataset.SaleType)
+disp(dataset.MiscVal)
+
 % Removal of 'pool-related' non-informative records
 data(data.PoolArea > 0, :) = [];
 
@@ -100,6 +136,18 @@ for i = 1 : num_features
 end
 
 clear i num_features
+
+%% Correlazione
+% TODO: da migliorare(non funziona)
+variabileTarget = data{:,data.SalePrice};
+for i=1:size(data,2)-1
+    attributi = data(:,i); % Seleziona le colonne degli attributi
+    numeroAttributi = size(attributi, 2); % Ottieni il numero di attributi
+    for j = 1:numeroAttributi
+    matriceCorrelazione(j) = corrcoef(variabileTarget, attributi(:, j));
+    end
+end
+
 %% Outliers removal
 
 outlier_indices = [];
