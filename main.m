@@ -48,9 +48,6 @@ disp(dataset.TotRmsAbvGrd)
 % incosistenti, ovvero dati contradditori o nn confrmi che influiscono
 % negativamente sul processo di addestramento e sui risultati
 
-disp(dataset.SaleType)
-disp(dataset.MiscVal)
-
 % Removal of 'pool-related' non-informative records
 data(data.PoolArea > 0, :) = [];
 
@@ -78,8 +75,7 @@ data = removevars( ...
         'Functional', 'FireplaceQu', 'GarageType', 'GarageYrBlt', ...
         'GarageFinish', 'GarageQual', 'WoodDeckSF', 'OpenPorchSF', ...
         'EnclosedPorch', 'x3SsnPorch', 'ScreenPorch', 'PoolArea', ...
-        'PoolQC', 'Fence', 'MiscFeature', 'MiscVal', 'MoSold', ...
-        'YrSold', 'SaleType', ...
+        'PoolQC', 'Fence', 'MiscFeature', 'MoSold','YrSold', ...
     } ...
 );
 
@@ -138,15 +134,26 @@ end
 clear i num_features
 
 %% Correlazione
-% TODO: da migliorare(non funziona)
-variabileTarget = data{:,data.SalePrice};
-for i=1:size(data,2)-1
-    attributi = data(:,i); % Seleziona le colonne degli attributi
-    numeroAttributi = size(attributi, 2); % Ottieni il numero di attributi
-    for j = 1:numeroAttributi
-    matriceCorrelazione(j) = corrcoef(variabileTarget, attributi(:, j));
-    end
-end
+
+corr_mat = corrcoef(table2array(data))
+features_names = (data(:, 1:end-1).Properties.VariableNames)'
+target_corr = abs(corr_mat(1:end-1,end))
+correlation = table(target_corr,features_names);
+
+disp(correlation);  
+
+disp(dataset.SaleType)
+disp(dataset.MiscVal)
+
+% Dall'analisi della correlazione di ogni features con la correlazione
+% della feature target, è stata eliminata la features relativa al SaleType
+% Quest'ultima presenta una bassa correlazione con la variabile target e non
+% presenta informazioni essenziali per la nostra analisi. Di conseguenza è
+% rimossa anche la variabile MiscVal in quanto di riferimento ad una 
+% caratteristica che è stata eliminata.
+
+data = removevars(data,{'SaleType', 'MiscVal'});
+
 
 %% Outliers removal
 
