@@ -11,7 +11,7 @@ dataset = readtable('train.csv');
 data = dataset;
 %% Normalization setup step
 
-categorical_variables_indices = [];
+categorical_variables_names = string([]);
 normalization_type = 'zscore';
 %% Preprocessing phase
 
@@ -64,6 +64,10 @@ data = addvars( ...
     'HasGarage' ...
 );
 
+categorical_variables_names = [categorical_variables_names, 'HasGarage'];
+
+clear has_garage
+
 % After data exploration low informative-content variables are removed
 data = removevars( ...
     data, ...
@@ -78,18 +82,16 @@ data = removevars( ...
         'PoolQC', 'Fence', 'MiscFeature', 'MoSold','YrSold', ...
     } ...
 );
+%% Missing values analysis
 
-has_garage_index = find(strcmp(data.Properties.VariableNames, 'HasGarage'));
-categorical_variables_indices = [categorical_variables_indices, has_garage_index];
-
-clear has_garage has_garage_index
-%%
-% Missing values analysis
 nan_count = sum(ismissing(data))
 nan_indices = find(nan_count > 0)
 
 % Missing values management
 for i = nan_indices
+    % Since all missing values are in numeric variables, the chosen way to
+    % handle them is fill them with the average value of all the other
+    % values in the same column.
     data.(i) = fillmissing( ...
         data.(i), ...
         'constant', ...
@@ -101,13 +103,17 @@ clear nan_count nan_indices i
 %% Categorical features encoding
 
 % 'Quality-related' features encoding
-columns_indices = [19, 20, 22, 23, 27, 38, 43];
-categorical_variables_indices = [categorical_variables_indices, columns_indices];
+column_indices = [19, 20, 22, 23, 27, 38, 43];
+column_names = [ ...
+    'ExterQual', 'ExterCond', 'BsmtQual', 'BsmtCond', ...
+    'HeatingQC', 'KitchenQual', 'GarageCond', ...
+]
+categorical_variables_names = [categorical_variables_names, column_names];
 
 keys = {'NA', 'Po', 'Fa', 'TA', 'Gd', 'Ex'};
 values = [0, 1, 2, 3, 4, 5];
 
-for i = columns_indices
+for i = column_indices
     old_column = data.(i);
     new_column = zeros(length(data.(i)), 1);
 
@@ -117,33 +123,55 @@ for i = columns_indices
     data.(i) = new_column;
 end
 
-clear columns_indices keys values old_column new_column i j
+clear column_indices column_names
+clear keys values old_column new_column i j
 
 % Other categorical features encoding
 num_features = (size(data, 2)) -1
 
 for i = 1 : num_features
     if ~isnumeric(data.(i))
-        if ~ismember(i, categorical_variables_indices)
-            categorical_variables_indices = [categorical_variables_indices, i];
+        var_name = data.Properties.VariableNames{i};
+        if ~ismember(var_name, categorical_variables_names)
+            categorical_variables_names = [categorical_variables_names, var_name];
         end
         data.(i) = grp2idx(data.(i));
     end
 end
 
-clear i num_features
-
+clear i var_name num_features
 %% Correlazione
 
 corr_mat = corrcoef(table2array(data))
 features_names = (data(:, 1:end-1).Properties.VariableNames)'
 target_corr = abs(corr_mat(1:end-1,end))
-correlation = table(target_corr,features_names);
 
-disp(correlation);  
+[max_target_corr, I_max] = sort(target_corr, "descend");
+max_features_names = features_names(I_max);
+max_corr = table(max_features_names, max_target_corr);
+disp("MAXIMUM CORRELATION VALUES");
+disp(max_corr(1:10, :));
 
-disp(dataset.SaleType)
-disp(dataset.MiscVal)
+[min_target_corr, I_min] = sort(target_corr, "ascend");
+min_features_names = features_names(I_min);
+min_corr = table(min_features_names, min_target_corr);
+disp("MINIMUM CORRELATION VALUES");
+disp(min_corr(1:10, :));
+
+for i = 1 : length(min_target_corr)
+    features_names = (data(:, 1:end-1).Properties.VariableNames)';
+    var_name = min_features_names{i};
+    if min_target_corr(i) < 0.2
+        if ismember(var_name, categorical_variables_names)
+            index = strcmp(categorical_variables_names, var_name);
+            categorical_variables_names(index) = [];
+        end
+        data_index = find(strcmp(features_names, var_name));
+        data.(data_index) = [];
+    else
+        break
+    end
+end
 
 % Dall'analisi della correlazione di ogni features con la correlazione
 % della feature target, è stata eliminata la features relativa al SaleType
@@ -152,9 +180,9 @@ disp(dataset.MiscVal)
 % rimossa anche la variabile MiscVal in quanto di riferimento ad una 
 % caratteristica che è stata eliminata.
 
-data = removevars(data,{'SaleType', 'MiscVal'});
-
-
+clear min_target_corr I_min min_corr min_features_names
+clear max_target_corr I_max max_corr max_features_names
+clear i corr_mat features_names target_corr var_name index data_index
 %% Outliers removal
 
 outlier_indices = [];
@@ -200,7 +228,7 @@ y_train = table2array(training_data(:, {'SalePrice'}));
 X_test = table2array(removevars(test_data, {'SalePrice'}));
 y_test = table2array(test_data(:, {'SalePrice'}));
 
-clear data cv training_data test_data
+clear cv training_data test_data
 %% PCA and normalization
 
 [~, ~, ~, ~, explained] = pca(X_train);
@@ -218,6 +246,9 @@ for i = 1: length(cum_sum)
 end
 
 % Normalization of numerical (continuous) data only
+categorical_variables_indices = find( ...
+    ismember(data.Properties.VariableNames, categorical_variables_names) ...
+);
 X_train_numerical = X_train;
 X_train_numerical(:, categorical_variables_indices) = [];
 X_train_categorical = X_train(:, categorical_variables_indices);
@@ -251,5 +282,5 @@ X_test = X_test * coeff;
 clear explained cum_sum threshold optimal_num_components exp_var
 clear X_train_numerical X_train_categorical
 clear X_test_numerical X_test_categorical
-clear categorical_variables_indices
+clear categorical_variables_names categorical_variables_indices
 clear coeff i mu sigma
