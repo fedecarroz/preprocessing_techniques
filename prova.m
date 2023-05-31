@@ -109,10 +109,10 @@ clear nan_count nan_indices i
 
 % 'Quality-related' features encoding
 column_indices = [19, 20, 22, 23, 27, 38, 43];
-column_names = [ ...
-    'ExterQual', 'ExterCond', 'BsmtQual', 'BsmtCond', ...
-    'HeatingQC', 'KitchenQual', 'GarageCond', ...
-]
+column_names = string([ ...
+    "ExterQual", "ExterCond", "BsmtQual", "BsmtCond", ...
+    "HeatingQC", "KitchenQual", "GarageCond", ...
+]);
 categorical_variables_names = [categorical_variables_names, column_names];
 
 keys = {'NA', 'Po', 'Fa', 'TA', 'Gd', 'Ex'};
@@ -128,6 +128,7 @@ for i = column_indices
     data.(i) = new_column;
 end
 
+num_features = (size(data, 2)) -1
 clear column_indices column_names
 clear keys values old_column new_column i j
 
@@ -165,6 +166,10 @@ disp(min_corr(1:10, :));
 
 corr_threshold = 0.6;
 
+% After comparing the correlation of each variable with the correlation of 
+% the target variable, the columns that exhibited a correlation below a 
+% certain threshold were removed.
+
 for i = 1 : length(min_target_corr)
     features_names = (data(:, 1:end-1).Properties.VariableNames)';
     var_name = min_features_names{i};
@@ -180,9 +185,6 @@ for i = 1 : length(min_target_corr)
     end
 end
 
-% After comparing the correlation of each variable with the correlation of 
-% the target variable, the columns that exhibited a correlation below a 
-% certain threshold were removed.
 
 clear min_target_corr I_min min_corr min_features_names
 clear max_target_corr I_max max_corr max_features_names
