@@ -40,9 +40,17 @@ y_test = table2array(test_data(:, {'SalePrice'}));
 clear cv training_data test_data
 %% Linear regression
 
-% TODO: inserire la regressione lineare
-%%
-y_test
-y_pred = predict(model, X_test)
-mse_value = mse(y_test, y_pred)
-rmse_value = sqrt(mse_value)
+model = fitrlinear( ...
+    X_train, ...
+    y_train, ...
+    'Solver', 'sgd', ...
+    'Learner', 'leastsquares', ...
+    'Verbose', 2 ...
+);
+
+y_pred = model.predict(X_test);
+
+results = table(y_test, y_pred)
+
+loss_type = model.FittedLoss
+loss_value = model.loss(X_test, y_test)

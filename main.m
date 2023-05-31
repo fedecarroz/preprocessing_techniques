@@ -3,6 +3,8 @@
 
 clear
 clc
+
+rng(42) % For reproducibility
 %% Import data
 
 dataset = readtable('train.csv');
@@ -104,10 +106,10 @@ clear nan_count nan_indices i
 
 % 'Quality-related' features encoding
 column_indices = [19, 20, 22, 23, 27, 38, 43];
-column_names = [ ...
-    'ExterQual', 'ExterCond', 'BsmtQual', 'BsmtCond', ...
-    'HeatingQC', 'KitchenQual', 'GarageCond', ...
-]
+column_names = string([ ...
+    "ExterQual", "ExterCond", "BsmtQual", "BsmtCond", ...
+    "HeatingQC", "KitchenQual", "GarageCond", ...
+])
 categorical_variables_names = [categorical_variables_names, column_names];
 
 keys = {'NA', 'Po', 'Fa', 'TA', 'Gd', 'Ex'};
@@ -158,10 +160,12 @@ min_corr = table(min_features_names, min_target_corr);
 disp("MINIMUM CORRELATION VALUES");
 disp(min_corr(1:10, :));
 
+corr_threshold = 0.6;
+
 for i = 1 : length(min_target_corr)
     features_names = (data(:, 1:end-1).Properties.VariableNames)';
     var_name = min_features_names{i};
-    if min_target_corr(i) < 0.2
+    if min_target_corr(i) < corr_threshold
         if ismember(var_name, categorical_variables_names)
             index = strcmp(categorical_variables_names, var_name);
             categorical_variables_names(index) = [];
@@ -173,6 +177,8 @@ for i = 1 : length(min_target_corr)
     end
 end
 
+num_features = (size(data, 2)) -1
+
 % Dall'analisi della correlazione di ogni features con la correlazione
 % della feature target, è stata eliminata la features relativa al SaleType
 % Quest'ultima presenta una bassa correlazione con la variabile target e non
@@ -182,7 +188,7 @@ end
 
 clear min_target_corr I_min min_corr min_features_names
 clear max_target_corr I_max max_corr max_features_names
-clear i corr_mat features_names target_corr var_name index data_index
+clear i corr_mat features_names target_corr var_name index data_index num_features
 %% Outliers removal
 
 outlier_indices = [];
@@ -284,26 +290,58 @@ clear X_train_numerical X_train_categorical
 clear X_test_numerical X_test_categorical
 clear categorical_variables_names categorical_variables_indices
 clear coeff i mu sigma
-
-
 %% Linear regression
 
-optimize_hyperparams = [
-    optimizableVariable("Lambda", [1e-5,0.1]), ...
-    optimizableVariable("Regularization", ["lasso", "ridge"]), ... % lasso => L1, ridge => L2 respect.
-];
+best_loss = Inf;
+best_hyperparameters = [];
 
-optimize_hyperparams_options = struct( ...
-    "Optimizer", "gridsearch", ...
-    "ShowPlots", true, ...
-    "Verbose", 2, ...
-    "UseParallel", true, ...
-    "Kfold", 10 ...
-);
+for reg_type = ["lasso", "ridge"]
+    for lmd = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
+        for alpha = [1e-3, 1e-2, 1e-1]
+            model = fitrlinear( ...
+                X_train, ...
+                y_train, ...
+                'Solver', 'sgd', ...
+                'Learner', 'leastsquares', ...
+                'Regularization', reg_type, ...
+                'Lambda', lmd, ...
+                'LearnRate', alpha, ...
+                'Verbose', 2, ...
+                'CrossVal', 'on', ...
+                'KFold', 10 ...
+            );
+            
+            
+            hyperparameters = [reg_type, lmd, alpha]
+            %model_loss = model.loss(X_test, y_test)
+            model_loss = kfoldLoss(model)
 
-[model, fit_info, hyperparameters] = fitrlinear( ...
+            if model_loss < best_loss
+                best_loss = model_loss;
+                best_hyperparameters = hyperparameters;
+            end
+        end
+    end
+end
+
+disp("After the tuning of the hyperparameters:");
+disp(best_hyperparameters);
+disp("The resulting kfold loss of the model is:");
+disp(best_loss);
+%%
+best_model = fitrlinear( ...
     X_train, ...
     y_train, ...
-    "OptimizeHyperparameters", optimize_hyperparams, ...
-    "HyperparameterOptimizationOptions", optimize_hyperparams_options ...
+    'Solver', 'sgd', ...
+    'Learner', 'leastsquares', ...
+    'Regularization', best_hyperparameters(1), ...
+    'Lambda', str2double(best_hyperparameters(2)), ...
+    'LearnRate', str2double(best_hyperparameters(3)) ...
 );
+
+y_pred = best_model.predict(X_test);
+
+results = table(y_test, y_pred)
+
+loss_type = best_model.FittedLoss
+loss_value = best_model.loss(X_test, y_test)
