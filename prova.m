@@ -15,40 +15,43 @@ data = dataset;
 
 categorical_variables_names = string([]);
 normalization_type = 'zscore';
+
 %% Preprocessing phase
 
-% Dopo un attento studio del dataset sono state eliminate delle
-% colonne. Di seguito vengono spiegate le motivazioni
+% In the aftermath of a careful study of the dataset, 
+% certain columns have been removed for specific reasons.
 
 disp(dataset.Fence)
 
-% La colonnsa Fence contiene dati non informativi, ovvero non c'è una 
-% variazione significativa di questi ultimi 
-% quindi non contribuiscono alla comprensione del fenomeno
+% The Fence column, along with other columns with similar characteristic,
+% contains non-informative data, meaning that there is no significant
+% variation in their values. Therefore, they do not contribute to 
+% the understanding of the phenomenon
 
 disp(dataset.Utilities)
 
-% La colonna Utilities viene eliminata in quanto tutte le sue occorrenze
-% sono uguali
+% The Utilities column is being eliminated as all its occurrences 
+% are identical
 
 disp(dataset.WoodDeckSF)
 
-% La colonna WoodDeckSF contiene un'alta percentuale di valori
-% nulli o zero, di conseguenza non è utile alla nostra analisi. 
-% In più un elevato numero di dati nulli implica una ridotta varianza
-% e una ridotta informazione.
+% The WoodDeckSF column contains a high percentage of null or zero values, 
+% making it not useful for our analysis. 
+% In addition, a high number of null values implies reduced 
+% variance and diminished information.
 
 disp(dataset.FireplaceQu)
 
-% La colonna  FireplaceQu presenta diversi NaN values. Quindi da un'attenta analisi è stata eliminata in seguito in quanto
-% una mancata gestione comporta errori o comportamenti imprevisti, 
-% per esempio la produzione di risultati non validi
+% The FireplaceQu column contains multiple NaN values. 
+% Therefore, after careful analysis, it was eliminated because 
+% failure to handle them could lead to errors or unexpected behaviors, 
+% such as generating invalid results.
 
 disp(dataset.TotRmsAbvGrd)
 
-% La colonna TotRmsAbvGrd è stata eliminata in quanto presenta dati
-% incosistenti, ovvero dati contradditori o nn confrmi che influiscono
-% negativamente sul processo di addestramento e sui risultati
+% The TotRmsAbvGrd column was removed as it contains inconsistent data, 
+% meaning it has contradictory or unconfirmed information 
+% that negatively impacts the training process and results.
 
 % Removal of 'pool-related' non-informative records
 data(data.PoolArea > 0, :) = [];
@@ -177,12 +180,9 @@ for i = 1 : length(min_target_corr)
     end
 end
 
-% Dall'analisi della correlazione di ogni features con la correlazione
-% della feature target, è stata eliminata la features relativa al SaleType
-% Quest'ultima presenta una bassa correlazione con la variabile target e non
-% presenta informazioni essenziali per la nostra analisi. Di conseguenza è
-% rimossa anche la variabile MiscVal in quanto di riferimento ad una 
-% caratteristica che è stata eliminata.
+% After comparing the correlation of each variable with the correlation of 
+% the target variable, the columns that exhibited a correlation below a 
+% certain threshold were removed.
 
 clear min_target_corr I_min min_corr min_features_names
 clear max_target_corr I_max max_corr max_features_names
