@@ -3,6 +3,8 @@
 
 clear
 clc
+
+rng(42) % For reproducibility
 %% Import data
 
 dataset = readtable('train.csv');
@@ -158,10 +160,12 @@ min_corr = table(min_features_names, min_target_corr);
 disp("MINIMUM CORRELATION VALUES");
 disp(min_corr(1:10, :));
 
+corr_threshold = 0.6;
+
 for i = 1 : length(min_target_corr)
     features_names = (data(:, 1:end-1).Properties.VariableNames)';
     var_name = min_features_names{i};
-    if min_target_corr(i) < 0.2
+    if min_target_corr(i) < corr_threshold
         if ismember(var_name, categorical_variables_names)
             index = strcmp(categorical_variables_names, var_name);
             categorical_variables_names(index) = [];
@@ -234,7 +238,7 @@ clear cv training_data test_data
 [~, ~, ~, ~, explained] = pca(X_train);
 cum_sum = cumsum(explained)
 
-threshold = 99.9
+threshold = 99.99
 
 % Hyperparameter tuning (optimal number of components)
 for i = 1: length(cum_sum)
@@ -284,26 +288,23 @@ clear X_train_numerical X_train_categorical
 clear X_test_numerical X_test_categorical
 clear categorical_variables_names categorical_variables_indices
 clear coeff i mu sigma
-
-
 %% Linear regression
 
-optimize_hyperparams = [
-    optimizableVariable("Lambda", [1e-5,0.1]), ...
-    optimizableVariable("Regularization", ["lasso", "ridge"]), ... % lasso => L1, ridge => L2 respect.
-];
-
-optimize_hyperparams_options = struct( ...
-    "Optimizer", "gridsearch", ...
-    "ShowPlots", true, ...
-    "Verbose", 2, ...
-    "UseParallel", true, ...
-    "Kfold", 10 ...
-);
-
-[model, fit_info, hyperparameters] = fitrlinear( ...
-    X_train, ...
-    y_train, ...
-    "OptimizeHyperparameters", optimize_hyperparams, ...
-    "HyperparameterOptimizationOptions", optimize_hyperparams_options ...
-);
+model = FullBatchGD( ...
+    size(X_train, 2), ... % n_features
+    10000, ... % epochs
+    1e-3, ... % learning_rate
+    0.1, ... % lambda
+    'L1' ... % penalty
+)
+m = size(X_train, 1)
+X_train_bias = [ones(m, 1), X_train];
+model.fit(X_train, y_train)
+%%
+fprintf('\ny_test:\n');
+fprintf('%.4e\n', y_test);
+y_pred = model.predict(X_test);
+fprintf('\ny_pred:\n');
+fprintf('%.4e\n', y_pred);
+mse_value = mse(y_test, y_pred)
+rmse_value = sqrt(mse_value)
