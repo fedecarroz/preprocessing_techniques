@@ -15,40 +15,50 @@ data = dataset;
 
 categorical_variables_names = string([]);
 normalization_type = 'zscore';
-%% Preprocessing phase
 
 % Dopo un attento studio del dataset sono state eliminate delle
-% colonne. Di seguito vengono spiegate le motivazioni
+% colonne. Di seguito vengono spiegate le motivazioni.
 
-disp(dataset.Fence)
+% Per quanto riguarda la colonna Fence e altre che presentano le stesse caratteristiche, 
+% esse contengono dati non informativi, 
+% ovvero non c'è una variazione significativa dei dati. Di conseguenza 
+% non contribuiscono alla comprensione del fenomeno.
 
-% La colonnsa Fence contiene dati non informativi, ovvero non c'è una 
-% variazione significativa di questi ultimi 
-% quindi non contribuiscono alla comprensione del fenomeno
+[str, ~, i] = unique(dataset.Fence);
+count= histcounts(i, 1:numel(str)+1);
 
-disp(dataset.Utilities)
+[max_count, max_i] = max(count);
+disp(max_count)
+max_str = str{max_i};
+disp(max_str)
+
 
 % La colonna Utilities viene eliminata in quanto tutte le sue occorrenze
 % sono uguali
 
-disp(dataset.WoodDeckSF)
+disp(dataset.Utilities)
 
 % La colonna WoodDeckSF contiene un'alta percentuale di valori
-% nulli o zero, di conseguenza non è utile alla nostra analisi. 
-% In più un elevato numero di dati nulli implica una ridotta varianza
+% nulli o zero, di conseguenza non è utile alla nostra analisi in quanto 
+% un elevato numero di dati nulli implica una ridotta varianza
 % e una ridotta informazione.
 
-disp(dataset.FireplaceQu)
+null_count = sum((dataset.WoodDeckSF)==0);
+disp(null_count)
 
-% La colonna  FireplaceQu presenta diversi NaN values. Quindi da un'attenta analisi è stata eliminata in seguito in quanto
+% La colonna  FireplaceQu presenta diversi NaN values.
+% Quindi da un'attenta analisi è stata eliminata in seguito in quanto
 % una mancata gestione comporta errori o comportamenti imprevisti, 
 % per esempio la produzione di risultati non validi
 
-disp(dataset.TotRmsAbvGrd)
+na_count = sum(strcmp(dataset.FireplaceQu, 'NA'));
+disp(num2str(na_count))
 
 % La colonna TotRmsAbvGrd è stata eliminata in quanto presenta dati
-% incosistenti, ovvero dati contradditori o nn confrmi che influiscono
-% negativamente sul processo di addestramento e sui risultati
+% inconsistenti, ovvero dati contradditori o non conformi che influiscono
+% negativamente sul processo di analisi.
+
+disp(dataset.TotRmsAbvGrd)
 
 % Removal of 'pool-related' non-informative records
 data(data.PoolArea > 0, :) = [];
