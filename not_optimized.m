@@ -1,6 +1,5 @@
 %% Preprocessing techniques project (no preprocessing)
 %% Preliminary operations
-
 clear
 clc
 
@@ -54,3 +53,9 @@ results = table(y_test, y_pred)
 
 loss_type = model.FittedLoss
 loss_value = model.loss(X_test, y_test)
+
+rmse = sqrt(loss_value)
+
+SSR = sum((y_pred - y_test).^2); % Sum of Squares Regression 
+SST = sum((y_test - mean(y_test)).^2); % Total Sum of Squares 
+r_squared = 1 - SSR / SST

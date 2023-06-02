@@ -155,8 +155,14 @@ clear i var_name num_features
 %% Correlazione
 
 corr_mat = corrcoef(table2array(data))
+
+full_feature_names = (data.Properties.VariableNames)'
+h = heatmap(full_feature_names,full_feature_names, corr_mat)
+
 features_names = (data(:, 1:end-1).Properties.VariableNames)'
 target_corr = abs(corr_mat(1:end-1,end))
+
+h_small = heatmap(('SalePrice'), features_names, target_corr)
 
 [max_target_corr, I_max] = sort(target_corr, "descend");
 max_features_names = features_names(I_max);
@@ -355,3 +361,9 @@ results = table(y_test, y_pred)
 
 loss_type = best_model.FittedLoss
 loss_value = best_model.loss(X_test, y_test)
+
+SSR = sum((y_pred - y_test).^2); % Sum of Squares Regression 
+SST = sum((y_test - mean(y_test)).^2); % Total Sum of Squares 
+r_squared = 1 - SSR / SST;
+
+fprintf("r2: %4.f",r_squared)
