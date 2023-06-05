@@ -15,7 +15,7 @@ data = dataset;
 
 categorical_variables_names = string([]);
 normalization_type = 'zscore';
-
+%%
 % Dopo un attento studio del dataset sono state eliminate delle
 % colonne. Di seguito vengono spiegate le motivazioni.
 
@@ -38,14 +38,6 @@ disp(max_str)
 
 disp(dataset.Utilities)
 
-% La colonna WoodDeckSF contiene un'alta percentuale di valori
-% nulli o zero, di conseguenza non è utile alla nostra analisi in quanto 
-% un elevato numero di dati nulli implica una ridotta varianza
-% e una ridotta informazione.
-
-null_count = sum((dataset.WoodDeckSF)==0);
-disp(null_count)
-
 % La colonna  FireplaceQu presenta diversi NaN values.
 % Quindi da un'attenta analisi è stata eliminata in seguito in quanto
 % una mancata gestione comporta errori o comportamenti imprevisti, 
@@ -58,13 +50,13 @@ disp(num2str(na_count))
 % inconsistenti, ovvero dati contradditori o non conformi che influiscono
 % negativamente sul processo di analisi.
 
-table=dataset(1,{'FullBath', 'BedroomAbvGr', 'HalfBath', 'KitchenAbvGr','TotRmsAbvGrd'});
-disp(table)
+rooms_table=dataset(1,{'FullBath', 'BedroomAbvGr', 'HalfBath', 'KitchenAbvGr','TotRmsAbvGrd'});
+disp(rooms_table)
 
 % Removal of 'pool-related' non-informative records
 data(data.PoolArea > 0, :) = [];
 
-% Addition of a 'garage-related' feature
+% Features engineering
 has_garage = zeros(height(data), 1);
 has_garage(data.GarageArea > 0) = 1;
 
@@ -153,17 +145,15 @@ for i = 1 : num_features
 end
 
 clear i var_name num_features
-%% Correlazione
+%% Correlation
 
 corr_mat = corrcoef(table2array(data))
+column_names = (data.Properties.VariableNames)';
+features_names = column_names(1:end-1,:);
+target_corr = abs(corr_mat(1:end-1,end));
 
-full_feature_names = (data.Properties.VariableNames)'
-h = heatmap(full_feature_names,full_feature_names, corr_mat)
-
-features_names = (data(:, 1:end-1).Properties.VariableNames)'
-target_corr = abs(corr_mat(1:end-1,end))
-
-h_small = heatmap(('SalePrice'), features_names, target_corr)
+h_full = heatmap(column_names, column_names, corr_mat)
+h_sale_price = heatmap(('SalePrice'), features_names, target_corr)
 
 [max_target_corr, I_max] = sort(target_corr, "descend");
 max_features_names = features_names(I_max);
@@ -177,12 +167,13 @@ min_corr = table(min_features_names, min_target_corr);
 disp("MINIMUM CORRELATION VALUES");
 disp(min_corr(1:10, :));
 
-corr_threshold = 0.6;
+% Removal of variables with low correlation with the target variable
+target_corr_threshold = 0.5;
 
 for i = 1 : length(min_target_corr)
     features_names = (data(:, 1:end-1).Properties.VariableNames)';
     var_name = min_features_names{i};
-    if min_target_corr(i) < corr_threshold
+    if min_target_corr(i) < target_corr_threshold
         if ismember(var_name, categorical_variables_names)
             index = strcmp(categorical_variables_names, var_name);
             categorical_variables_names(index) = [];
@@ -194,14 +185,11 @@ for i = 1 : length(min_target_corr)
     end
 end
 
-num_features = (size(data, 2)) -1
+% Removal of variables with high correlation with other features
+features_corr_threshold = 0.8;
+high_corr_features_num = 2;
 
-% Dall'analisi della correlazione di ogni features con la correlazione
-% della feature target, è stata eliminata la features relativa al SaleType
-% Quest'ultima presenta una bassa correlazione con la variabile target e non
-% presenta informazioni essenziali per la nostra analisi. Di conseguenza è
-% rimossa anche la variabile MiscVal in quanto di riferimento ad una 
-% caratteristica che è stata eliminata.
+num_features = (size(data, 2)) -1
 
 clear min_target_corr I_min min_corr min_features_names
 clear max_target_corr I_max max_corr max_features_names
@@ -252,21 +240,7 @@ X_test = table2array(removevars(test_data, {'SalePrice'}));
 y_test = table2array(test_data(:, {'SalePrice'}));
 
 clear cv training_data test_data
-%% PCA and normalization
-
-[~, ~, ~, ~, explained] = pca(X_train);
-cum_sum = cumsum(explained)
-
-threshold = 99.9
-
-% Hyperparameter tuning (optimal number of components)
-for i = 1: length(cum_sum)
-    if cum_sum(i) >= threshold
-        optimal_num_components = i
-        exp_var = cum_sum(i)
-        break
-    end
-end
+%% Normalization
 
 % Normalization of numerical (continuous) data only
 categorical_variables_indices = find( ...
@@ -290,6 +264,21 @@ end
 
 X_train = [X_train_numerical, X_train_categorical];
 X_test = [X_test_numerical, X_test_categorical];
+%% PCA
+
+[~, ~, ~, ~, explained] = pca(X_train);
+cum_sum = cumsum(explained)
+
+threshold = 90
+
+% Hyperparameter tuning (optimal number of components)
+for i = 1: length(cum_sum)
+    if cum_sum(i) >= threshold
+        optimal_num_components = i
+        exp_var = cum_sum(i)
+        break
+    end
+end
 
 % PCA using optimal number of components
 coeff = pca( ...
@@ -307,7 +296,7 @@ clear X_train_numerical X_train_categorical
 clear X_test_numerical X_test_categorical
 clear categorical_variables_names categorical_variables_indices
 clear coeff i mu sigma
-%% Linear regression
+%% Multivariate regression
 
 best_loss = Inf;
 best_hyperparameters = [];
@@ -315,34 +304,40 @@ best_hyperparameters = [];
 for reg_type = ["lasso", "ridge"]
     for lmd = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
         for alpha = [1e-3, 1e-2, 1e-1]
-            model = fitrlinear( ...
-                X_train, ...
-                y_train, ...
-                'Solver', 'sgd', ...
-                'Learner', 'leastsquares', ...
-                'Regularization', reg_type, ...
-                'Lambda', lmd, ...
-                'LearnRate', alpha, ...
-                'Verbose', 2, ...
-                'CrossVal', 'on', ...
-                'KFold', 10 ...
-            );
-            
-            
-            hyperparameters = [reg_type, lmd, alpha]
-            %model_loss = model.loss(X_test, y_test)
-            model_loss = kfoldLoss(model)
-
-            if model_loss < best_loss
-                best_loss = model_loss;
-                best_hyperparameters = hyperparameters;
+            for batch_size = [1, 100, 200]
+                model = fitrlinear( ...
+                    X_train, ...
+                    y_train, ...
+                    'Solver', 'sgd', ...
+                    'Learner', 'leastsquares', ...
+                    'Regularization', reg_type, ...
+                    'Lambda', lmd, ...
+                    'LearnRate', alpha, ...
+                    'BatchSize', batch_size, ...
+                    'Verbose', 2, ...
+                    'CrossVal', 'on', ...
+                    'KFold', 10 ...
+                );
+                
+                
+                hyperparameters = [reg_type, lmd, alpha, batch_size]
+                model_loss = kfoldLoss(model)
+    
+                if model_loss < best_loss
+                    best_loss = model_loss;
+                    best_hyperparameters = hyperparameters;
+                end
             end
         end
     end
 end
 
-disp("After the tuning of the hyperparameters:");
-disp(best_hyperparameters);
+disp("After the tuning, the best hyperparameters are:");
+hyperparameters_names = ["Regularization", "Lambda", "Learning rate", "Batch size"];
+hyperparmas_table = table( ...
+    hyperparameters_names', best_hyperparameters', ...
+    'VariableNames', ["Hyperparameter", "Value"] ...
+)
 disp("The resulting kfold loss of the model is:");
 disp(best_loss);
 %%
@@ -353,18 +348,27 @@ best_model = fitrlinear( ...
     'Learner', 'leastsquares', ...
     'Regularization', best_hyperparameters(1), ...
     'Lambda', str2double(best_hyperparameters(2)), ...
-    'LearnRate', str2double(best_hyperparameters(3)) ...
+    'LearnRate', str2double(best_hyperparameters(3)), ...
+    'BatchSize', str2double(best_hyperparameters(4)) ...
 );
 
 y_pred = best_model.predict(X_test);
 
-results = table(y_test, y_pred)
+results = table( ...
+    int32(y_test), int32(y_pred), ...
+    'VariableNames',["y_test","y_pred"] ...
+)
 
 loss_type = best_model.FittedLoss
 loss_value = best_model.loss(X_test, y_test)
+
+rmse = sqrt(loss_value);
 
 SSR = sum((y_pred - y_test).^2); % Sum of Squares Regression 
 SST = sum((y_test - mean(y_test)).^2); % Total Sum of Squares 
 r_squared = 1 - SSR / SST;
 
-fprintf("r2: %4.f",r_squared)
+metrics = table( ...
+    loss_value, double(rmse), r_squared, ...
+    'VariableNames',["MSE", "RMSE", "R_SQUARED"] ...
+)
