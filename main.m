@@ -58,7 +58,8 @@ disp(num2str(na_count))
 % inconsistenti, ovvero dati contradditori o non conformi che influiscono
 % negativamente sul processo di analisi.
 
-disp(dataset.TotRmsAbvGrd)
+table=dataset(1,{'FullBath', 'BedroomAbvGr', 'HalfBath', 'KitchenAbvGr','TotRmsAbvGrd'});
+disp(table)
 
 % Removal of 'pool-related' non-informative records
 data(data.PoolArea > 0, :) = [];
