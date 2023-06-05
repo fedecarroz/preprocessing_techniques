@@ -1,12 +1,13 @@
 %% Preprocessing techniques project (no preprocessing)
 %% Preliminary operations
+
 clear
 clc
 
 rng(42) % For reproducibility
 %% Import data
 
-dataset = readtable('train.csv');
+dataset = readtable('houses.csv');
 
 % Working variable
 data = dataset;
@@ -37,7 +38,7 @@ X_test = table2array(removevars(test_data, {'SalePrice'}));
 y_test = table2array(test_data(:, {'SalePrice'}));
 
 clear cv training_data test_data
-%% Linear regression
+%% Multivariate regression
 
 model = fitrlinear( ...
     X_train, ...
@@ -49,13 +50,27 @@ model = fitrlinear( ...
 
 y_pred = model.predict(X_test);
 
-results = table(y_test, y_pred)
+results = table( ...
+    int32(y_test), int32(y_pred), ...
+    'VariableNames',["y_test","y_pred"] ...
+);
+disp(results);
 
 loss_type = model.FittedLoss
 loss_value = model.loss(X_test, y_test)
 
-rmse = sqrt(loss_value)
+mse = mean((y_pred - y_test).^2); % Mean Squared Error
+rmse = sqrt(loss_value); % Root Mean Squared Error
 
 SSR = sum((y_pred - y_test).^2); % Sum of Squares Regression 
 SST = sum((y_test - mean(y_test)).^2); % Total Sum of Squares 
-r_squared = 1 - SSR / SST
+r_squared = 1 - SSR / SST; % Coefficient of determination
+
+format short
+metrics = table( ...
+    double(loss_value), double(rmse), double(r_squared), ...
+    'VariableNames',["MSE", "RMSE", "R_SQUARED"] ...
+);
+disp(metrics);
+
+clear results SSR SST
