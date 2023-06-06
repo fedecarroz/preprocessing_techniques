@@ -230,7 +230,7 @@ clear max_target_corr I_max max_corr max_features_names
 clear i var_name index data_index
 
 % Removal of variables with high correlation with other features
-corr_mat = corrcoef(table2array(data))
+corr_mat = corrcoef(table2array(data));
 
 features_corr_threshold = 0.7;
 high_corr_features_num = 2;
