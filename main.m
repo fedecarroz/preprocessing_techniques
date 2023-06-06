@@ -203,6 +203,8 @@ min_features_names = features_names(I_min);
 min_corr = table(min_features_names, min_target_corr);
 disp("MINIMUM CORRELATION VALUES WITH TARGET VARIABLE");
 disp(min_corr(1:10, :));
+
+
 % Removal of variables with low correlation with the target variable
 
 target_corr_threshold = 0.5;
@@ -226,13 +228,36 @@ clear column_names features_names target_corr
 clear min_target_corr I_min min_corr min_features_names
 clear max_target_corr I_max max_corr max_features_names
 clear i var_name index data_index
-% Removal of variables with high correlation with other features
 
-features_corr_threshold = 0.8;
+% Removal of variables with high correlation with other features
+corr_mat = corrcoef(table2array(data))
+
+features_corr_threshold = 0.7;
 high_corr_features_num = 2;
-% TODO: implement
+
+high_corr_count = zeros(1,size(corr_mat, 2) - 1);
+
+for i = 1:(size(corr_mat, 2) - 1)
+    feature_corr = corr_mat(i,1:end - 1);
+
+    %for each feature find feature which are high correlated except itself
+    %(when correlation is equal to 1) 
+    high_corr_found = length( ...
+        find(feature_corr > features_corr_threshold & feature_corr < 1) ...
+    )
+    
+    %add results to cumulative 
+    high_corr_count(i) = high_corr_found;
+end
+
+multiple_high_corr_features = find(high_corr_count > high_corr_features_num)
+data(:, multiple_high_corr_features) = [];
 
 clear features_corr_threshold high_corr_features_num
+clear feature_corr high_corr_found high_corr_indices
+clear high_corr_count high_corr_features multiple_high_corr_features
+
+
 %% 
 % Showing the current number of features.
 
