@@ -38,7 +38,7 @@ X_test = table2array(removevars(test_data, {'SalePrice'}));
 y_test = table2array(test_data(:, {'SalePrice'}));
 
 clear cv training_data test_data
-%% Multivariate regression
+%% Multivariate linear regression
 
 model = fitrlinear( ...
     X_train, ...
