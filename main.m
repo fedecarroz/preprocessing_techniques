@@ -193,8 +193,11 @@ corr_mat = corrcoef(table2array(data))
 column_names = (data.Properties.VariableNames)';
 features_names = column_names(1:end-1,:);
 target_corr = abs(corr_mat(1:end-1,end));
+
 %% 
-% Scrivere qualcosa sulle heatmap
+% A heat map (or heatmap) is a 2-dimensional data visualization technique that represents 
+% the magnitude of individual values within a dataset as a color. 
+% The variation in color may be by hue or intensity.
 
 h_full = heatmap(column_names, column_names, corr_mat)
 h_sale_price = heatmap(('SalePrice'), features_names, target_corr)
