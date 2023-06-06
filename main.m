@@ -218,30 +218,6 @@ disp("MINIMUM CORRELATION VALUES WITH TARGET VARIABLE");
 disp(min_corr(1:10, :));
 
 
-% Removal of variables with low correlation with the target variable
-
-target_corr_threshold = 0.5;
-
-for i = 1 : length(min_target_corr)
-    features_names = (data(:, 1:end-1).Properties.VariableNames)';
-    var_name = min_features_names{i};
-    if min_target_corr(i) < target_corr_threshold
-        if ismember(var_name, categorical_variables_names)
-            index = strcmp(categorical_variables_names, var_name);
-            categorical_variables_names(index) = [];
-        end
-        data_index = find(strcmp(features_names, var_name));
-        data.(data_index) = [];
-    else
-        break
-    end
-end
-
-clear column_names features_names target_corr
-clear min_target_corr I_min min_corr min_features_names
-clear max_target_corr I_max max_corr max_features_names
-clear i var_name index data_index
-
 % Removal of variables with high correlation with other features
 corr_mat = corrcoef(table2array(data));
 
@@ -269,6 +245,31 @@ data(:, multiple_high_corr_features) = [];
 clear features_corr_threshold high_corr_features_num
 clear feature_corr high_corr_found high_corr_indices
 clear high_corr_count high_corr_features multiple_high_corr_features
+
+% Removal of variables with low correlation with the target variable
+
+target_corr_threshold = 0.5;
+
+for i = 1 : length(min_target_corr)
+    features_names = (data(:, 1:end-1).Properties.VariableNames)';
+    var_name = min_features_names{i};
+    if min_target_corr(i) < target_corr_threshold
+        if ismember(var_name, categorical_variables_names)
+            index = strcmp(categorical_variables_names, var_name);
+            categorical_variables_names(index) = [];
+        end
+        data_index = find(strcmp(features_names, var_name));
+        data.(data_index) = [];
+    else
+        break
+    end
+end
+
+clear column_names features_names target_corr
+clear min_target_corr I_min min_corr min_features_names
+clear max_target_corr I_max max_corr max_features_names
+clear i var_name index data_index
+
 %% 
 % Showing the current number of features.
 
