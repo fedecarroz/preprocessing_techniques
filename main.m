@@ -177,7 +177,17 @@ end
 
 clear i var_name num_features
 %% Correlation
-% scrivere qualcosa sulla correlazione
+% The correlation is a measure that describes the lineare relationship between 
+% two variables, i.e. indicates how much two variables tend to move togheter.
+% 
+% The correlation can take values from -1 and +1. Values that are close to +1 
+% indicate a strong positive correlation, meaning that the two variables tend 
+% to increase or decrease together. While, a value close to -1 indicates a strong 
+% negative correlation, where one variable tends to increase and the other one 
+% tends to decrease.
+% 
+% In our specific case, we calculate the correlation between the target variable 
+% and each indiviadual variable in the dataset. 
 
 corr_mat = corrcoef(table2array(data))
 column_names = (data.Properties.VariableNames)';
@@ -256,8 +266,6 @@ data(:, multiple_high_corr_features) = [];
 clear features_corr_threshold high_corr_features_num
 clear feature_corr high_corr_found high_corr_indices
 clear high_corr_count high_corr_features multiple_high_corr_features
-
-
 %% 
 % Showing the current number of features.
 
@@ -265,7 +273,10 @@ num_features = (size(data, 2)) -1;
 fprintf('Number of remaining features: %s', num_features);
 clear num_features
 %% Outliers removal
-% scrivere qualcosa di teoria sull'outlier removal
+% Outliers are points that significantly deviate from the rest of the dataset. 
+% They can be really high or really low values compared to the distribution of 
+% other data in the dataset. Outlier removal is an operation that involves elimintaing 
+% or excluding data points considered outliers from the dataset.
 
 outlier_indices = [];
 
@@ -375,8 +386,17 @@ clear X_train_numerical X_train_categorical
 clear X_test_numerical X_test_categorical
 clear categorical_variables_names categorical_variables_indices
 clear coeff i mu sigma
-%% Multivariate regression
-% Scrivere qualcosa di teorico
+%% Multivariate linear regression
+% In a multivariate linear regression, the goal is to estimate regression coefficients 
+% that measure the relative contribution of each independent variable in explaining 
+% the dependent variable. These coefficients provide information about the dependency 
+% relationships between the variables.
+% 
+% $$h_{\theta } \left(x^{\left(i\right)} \right)=\theta^{T\;} *x$$
+% 
+% Unlike univariate linear regression, in which the relationship between a single 
+% independent variable and the dependent variable is studied, multivariate linea 
+% regression considers multiple independent variables.
 
 best_kfold_loss = Inf;
 best_hyperparameters = [];
