@@ -175,7 +175,7 @@ end
 clear i var_name num_features
 %% Correlation
 % The correlation is a measure that describes the lineare relationship between 
-% two variables, i.e. indicates how much two variables tend to move togheter.
+% two variables.
 % 
 % The correlation can take values from -1 and +1. Values that are close to +1 
 % indicate a strong positive correlation, meaning that the two variables tend 
@@ -190,9 +190,7 @@ corr_mat = corrcoef(table2array(data))
 column_names = (data.Properties.VariableNames)';
 features_names = column_names(1:end-1,:);
 target_corr = abs(corr_mat(1:end-1,end));
-%% 
-% Scrivere qualcosa sulle heatmap
-
+%%
 h_full = heatmap(column_names, column_names, corr_mat)
 h_sale_price = heatmap(('SalePrice'), features_names, target_corr)
 %% 
